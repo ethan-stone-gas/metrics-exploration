@@ -1,4 +1,4 @@
-import { formatDateToTimestamp } from "src/data/redshift-data-api";
+import { formatDateToTimestamp } from "src/data/db";
 import {
   RedshiftChargingStation,
   insertManyRedshiftChargingStations,

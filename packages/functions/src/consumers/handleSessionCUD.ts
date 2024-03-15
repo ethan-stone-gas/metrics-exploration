@@ -1,7 +1,7 @@
 import { createKafakHandler } from "../utils/createKafkaHandler";
 import { SessionCUD } from "./eventTypes/session_cud";
 import { RedshiftSession, insertManyRedshiftSessions } from "../data/sessions";
-import { formatDateToTimestamp } from "../data/redshift-data-api";
+import { formatDateToTimestamp } from "../data/db";
 
 export const main = createKafakHandler<SessionCUD>({
   schemaVersionId: "65f9a8ee-7665-4177-b857-6c9a01b8925b",

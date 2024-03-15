@@ -3,40 +3,14 @@ import {
   ExecuteStatementCommand,
   GetStatementResultCommand,
 } from "@aws-sdk/client-redshift-data";
-import { redShiftClient, redShiftSecretArn } from "./redshift-data-api";
+import { executeStatement, redShiftClient, redShiftSecretArn } from "./db";
 
 export async function insertManyRedshiftChargingStations(
   chargingstation: RedshiftChargingStation[]
 ) {
   const query = buildInsertManyChargingStationStatement(chargingstation);
 
-  const res = await redShiftClient.send(
-    new ExecuteStatementCommand({
-      Database: "dev",
-      SecretArn: redShiftSecretArn,
-      WorkgroupName: "default-workgroup",
-      Sql: query,
-    })
-  );
-
-  while (true) {
-    const statementDesc = await redShiftClient.send(
-      new DescribeStatementCommand({
-        Id: res.Id!,
-      })
-    );
-
-    if (
-      statementDesc.Status &&
-      ["FINISHED", "ABORTED", "FAILED"].includes(statementDesc.Status)
-    ) {
-      console.log(
-        "[insertManyRedshiftChargingStations] time milliseconds: ",
-        statementDesc.Duration! / 1000 / 1000
-      );
-      break;
-    }
-  }
+  await executeStatement(query);
 }
 
 export async function getChargingStationsById(id: string) {

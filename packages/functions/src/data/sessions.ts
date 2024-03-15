@@ -1,41 +1,12 @@
-import {
-  ExecuteStatementCommand,
-  DescribeStatementCommand,
-} from "@aws-sdk/client-redshift-data";
-import { redShiftClient, redShiftSecretArn } from "./redshift-data-api";
+import {} from "@aws-sdk/client-redshift-data";
+import { executeStatement } from "./db";
 
 export async function insertManyRedshiftSessions(
   redshiftSessions: RedshiftSession[]
 ) {
   const query = buildInsertManySessionStatement(redshiftSessions);
 
-  const res = await redShiftClient.send(
-    new ExecuteStatementCommand({
-      Database: "dev",
-      SecretArn: redShiftSecretArn,
-      WorkgroupName: "default-workgroup",
-      Sql: query,
-    })
-  );
-
-  while (true) {
-    const statementDesc = await redShiftClient.send(
-      new DescribeStatementCommand({
-        Id: res.Id!,
-      })
-    );
-
-    if (
-      statementDesc.Status &&
-      ["FINISHED", "ABORTED", "FAILED"].includes(statementDesc.Status)
-    ) {
-      console.log(
-        "[insertManyRedshiftSessions] time milliseconds: ",
-        statementDesc.Duration! / 1000 / 1000
-      );
-      break;
-    }
-  }
+  await executeStatement(query);
 }
 
 function buildInsertManySessionStatement(sessions: RedshiftSession[]) {
