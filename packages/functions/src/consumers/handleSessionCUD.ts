@@ -4,7 +4,7 @@ import { RedshiftSession, insertManyRedshiftSessions } from "../data/sessions";
 import { formatDateToTimestamp } from "../data/db";
 
 export const main = createKafakHandler<SessionCUD>({
-  schemaVersionId: "65f9a8ee-7665-4177-b857-6c9a01b8925b",
+  schemaVersionId: "schema-version-id",
   eachBatch: async ({ batch }) => {
     for (const messageThatFailedSchemaValidation of batch.messagesFailedSchemaValidation) {
       console.error(
