@@ -12,8 +12,15 @@ export function RedshiftStack({ stack }: StackContext) {
   const managedRedShiftFullAccessPolicy =
     iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonRedshiftDataFullAccess");
 
-  const ingester = new Function(stack, "Ingester", {
-    handler: "packages/functions/src/lambda.handler",
+  const ingester = new Function(stack, "HandleSessionCUD", {
+    handler: "packages/functions/src/consumers/handleSessionCUD.main",
+    timeout: "15 minutes",
+    initialPolicy: [
+      new iam.PolicyStatement({
+        actions: ["glue:GetSchemaVersion"],
+        resources: ["*"],
+      }),
+    ],
     environment: {
       REDSHIFT_SECRET_ARN: redshiftSecret.secretArn,
     },
