@@ -16,48 +16,11 @@ export async function insertManyRedshiftChargingStations(
 export async function getChargingStationsById(id: string) {
   const query = `select * from chargingstations where chargingstationid = '${id}'`;
 
-  const res = await redShiftClient.send(
-    new ExecuteStatementCommand({
-      Database: "dev",
-      SecretArn: redShiftSecretArn,
-      WorkgroupName: "default-workgroup",
-      Sql: query,
-    })
-  );
+  const result = await executeStatement(query);
 
-  let hasResultSet = false;
+  if (!result || result.length === 0) return null;
 
-  while (true) {
-    const statementDesc = await redShiftClient.send(
-      new DescribeStatementCommand({
-        Id: res.Id!,
-      })
-    );
-
-    if (
-      statementDesc.Status &&
-      ["FINISHED", "ABORTED", "FAILED"].includes(statementDesc.Status)
-    ) {
-      hasResultSet = statementDesc.HasResultSet!;
-      break;
-    }
-  }
-
-  if (!hasResultSet) {
-    throw new Error(`Query failed`);
-  }
-
-  const results = await redShiftClient.send(
-    new GetStatementResultCommand({
-      Id: res.Id!,
-    })
-  );
-
-  if (!results.Records) {
-    return null;
-  }
-
-  const row = results.Records[0];
+  const row = result[0];
 
   return {
     chargingstationid: row[0].stringValue,
