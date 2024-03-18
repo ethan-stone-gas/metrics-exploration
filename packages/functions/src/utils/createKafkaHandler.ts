@@ -55,6 +55,8 @@ type Message<TRecord> = {
 };
 
 type Batch<TRecord> = {
+  firstOffset: number;
+  lastOffset: number;
   messages: Message<TRecord>[];
   messagesFailedSchemaValidation: Message<string>[];
   partition: number;
@@ -101,6 +103,8 @@ export function createKafakHandler<TRecord>(
 
       await config.eachBatch({
         batch: {
+          firstOffset: topicRecords[0].offset,
+          lastOffset: topicRecords[topicRecords.length - 1].offset,
           messages: validatedMessages,
           partition: topicRecords[0].partition,
           topic: topicRecords[0].topic,
