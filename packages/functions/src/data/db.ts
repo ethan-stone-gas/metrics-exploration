@@ -1,6 +1,7 @@
 import {
   DescribeStatementCommand,
   ExecuteStatementCommand,
+  GetStatementResultCommand,
   RedshiftDataClient,
 } from "@aws-sdk/client-redshift-data";
 
@@ -20,6 +21,8 @@ export async function executeStatement(query: string) {
     })
   );
 
+  let hasResultSet = false;
+
   while (true) {
     const statementDesc = await redShiftClient.send(
       new DescribeStatementCommand({
@@ -32,12 +35,25 @@ export async function executeStatement(query: string) {
       ["FINISHED", "ABORTED", "FAILED"].includes(statementDesc.Status)
     ) {
       console.log(
-        "Statement duration in milliseconds: ",
+        "Statement duration in milliseconds:",
         statementDesc.Duration! / 1000 / 1000
       );
+      hasResultSet = statementDesc.HasResultSet!;
       break;
     }
   }
+
+  if (hasResultSet) {
+    const resultSet = await redShiftClient.send(
+      new GetStatementResultCommand({
+        Id: res.Id!,
+      })
+    );
+
+    return resultSet.Records;
+  }
+
+  return null;
 }
 
 export function formatDateToTimestamp(date: Date) {

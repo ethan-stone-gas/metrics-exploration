@@ -2,9 +2,13 @@ import { createKafakHandler } from "../utils/createKafkaHandler";
 import { SessionCUD } from "./eventTypes/session_cud";
 import { RedshiftSession, insertManyRedshiftSessions } from "../data/sessions";
 import { formatDateToTimestamp } from "../data/db";
+import {
+  getOffsetForPartitionAndTopic,
+  upsertOffsetForTopicAndPartition,
+} from "../data/offsets";
 
 export const main = createKafakHandler<SessionCUD>({
-  schemaVersionId: "schema-version-id",
+  schemaVersionId: "65f9a8ee-7665-4177-b857-6c9a01b8925b",
   eachBatch: async ({ batch }) => {
     for (const messageThatFailedSchemaValidation of batch.messagesFailedSchemaValidation) {
       console.error(
@@ -14,7 +18,19 @@ export const main = createKafakHandler<SessionCUD>({
 
     let sessions: RedshiftSession[] = [];
 
+    const latestOffset = await getOffsetForPartitionAndTopic({
+      partition: batch.partition,
+      topic: batch.topic,
+    });
+
     for (const message of batch.messages) {
+      if (latestOffset !== null && message.offset <= latestOffset?.offset) {
+        console.log(
+          `Skipping message with offset ${message.offset} as it has already been processed.`
+        );
+        continue;
+      }
+
       const msgValue = message.value;
 
       if (
@@ -31,6 +47,15 @@ export const main = createKafakHandler<SessionCUD>({
       if (sessions.length === 200) {
         console.log("Inserting 200 sessions");
         await insertManyRedshiftSessions(sessions);
+
+        // in case of failure in later batches we want to
+        // save the offset of the last successful batch
+        await upsertOffsetForTopicAndPartition({
+          offsetnum: message.offset,
+          partitionnum: batch.partition,
+          topic: batch.topic,
+        });
+
         sessions = [];
       }
 
@@ -61,5 +86,11 @@ export const main = createKafakHandler<SessionCUD>({
       console.log(`Inserting ${sessions.length} remaining sessions`);
       await insertManyRedshiftSessions(sessions);
     }
+
+    await upsertOffsetForTopicAndPartition({
+      offsetnum: batch.lastOffset,
+      partitionnum: batch.partition,
+      topic: batch.topic,
+    });
   },
 });
