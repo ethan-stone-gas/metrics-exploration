@@ -1,6 +1,6 @@
 import { createKafakHandler } from "../utils/createKafkaHandler";
 import { SessionCUD } from "./eventTypes/session_cud";
-import { RedshiftSession, insertManyRedshiftSessions } from "../data/sessions";
+import { Session, insertManySessions } from "../data/sessions";
 import { formatDateToTimestamp } from "../data/db";
 import {
   getOffsetForPartitionAndTopic,
@@ -16,7 +16,7 @@ export const main = createKafakHandler<SessionCUD>({
       );
     }
 
-    let sessions: RedshiftSession[] = [];
+    let sessions: Session[] = [];
 
     const latestOffset = await getOffsetForPartitionAndTopic({
       partition: batch.partition,
@@ -46,7 +46,7 @@ export const main = createKafakHandler<SessionCUD>({
       // if we hit 200 sessions we should flush the batch and insert them
       if (sessions.length === 200) {
         console.log("Inserting 200 sessions");
-        await insertManyRedshiftSessions(sessions);
+        await insertManySessions(sessions);
 
         // in case of failure in later batches we want to
         // save the offset of the last successful batch
@@ -59,7 +59,7 @@ export const main = createKafakHandler<SessionCUD>({
         sessions = [];
       }
 
-      const redshiftSession: RedshiftSession = {
+      const redshiftSession: Session = {
         sessionid: msgValue.data.id,
         networkid: msgValue.network,
         rateid: msgValue.data.rateId,
@@ -72,6 +72,7 @@ export const main = createKafakHandler<SessionCUD>({
         energycost: msgValue.data.costDetails.costs.energy,
         flatcost: msgValue.data.costDetails.costs.flat,
         energyusage: msgValue.data.costDetails.usages.energy,
+        idletime: msgValue.data.costDetails.usages.idle,
         meterstart: Math.floor(msgValue.data.meterStart),
         meterstop: Math.floor(msgValue.data.meterStop!),
         starttime: formatDateToTimestamp(new Date(msgValue.data.startTime)),
@@ -84,7 +85,7 @@ export const main = createKafakHandler<SessionCUD>({
     // if there are any sessions left, insert them
     if (sessions.length > 0) {
       console.log(`Inserting ${sessions.length} remaining sessions`);
-      await insertManyRedshiftSessions(sessions);
+      await insertManySessions(sessions);
     }
 
     await upsertOffsetForTopicAndPartition({

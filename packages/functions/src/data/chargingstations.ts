@@ -1,9 +1,4 @@
-import {
-  DescribeStatementCommand,
-  ExecuteStatementCommand,
-  GetStatementResultCommand,
-} from "@aws-sdk/client-redshift-data";
-import { executeStatement, redShiftClient, redShiftSecretArn } from "./db";
+import { executeStatement } from "./db";
 
 export async function insertManyRedshiftChargingStations(
   chargingstation: RedshiftChargingStation[]
@@ -14,7 +9,7 @@ export async function insertManyRedshiftChargingStations(
 }
 
 export async function getChargingStationsById(id: string) {
-  const query = `select * from chargingstations where chargingstationid = '${id}'`;
+  const query = `select * from charging_stations where charging_station_id = '${id}'`;
 
   const result = await executeStatement(query);
 
@@ -42,7 +37,7 @@ function buildInsertManyChargingStationStatement(
     })
     .join(",");
 
-  return `insert into chargingstations values ${rows}`;
+  return `insert into charging_stations values ${rows}`;
 }
 
 export type RedshiftChargingStation = {

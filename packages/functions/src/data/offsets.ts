@@ -44,7 +44,7 @@ async function updateOffsetForTopicAndPartition({
   partitionnum: number;
   offsetnum: number;
 }) {
-  const query = `update offsets set offsetnum = ${offsetnum} where topic = '${topic}' and partitionnum = ${partitionnum}`;
+  const query = `update offsets set offset_num = ${offsetnum} where topic = '${topic}' and partition_num = ${partitionnum}`;
 
   await executeStatement(query);
 }
@@ -56,16 +56,20 @@ export async function getOffsetForPartitionAndTopic({
   topic: string;
   partition: number;
 }) {
-  const query = `select * from offsets where topic = '${topic}' and partitionnum = ${partition}`;
+  const query = `select * from offsets where topic = '${topic}' and partition_num = ${partition}`;
 
   const result = await executeStatement(query);
 
-  if (!result || result.length === 0) return null;
+  if (!result) return null;
+
+  const row = result[0];
+
+  if (!row) return null;
 
   return {
-    topic: result[0][0].stringValue!,
-    partition: result[0][1].longValue!,
-    offset: result[0][2].longValue!,
+    topic: row.topic!,
+    partition: row.partition_num!,
+    offset: row.offset_num!,
   };
 }
 

@@ -1,5 +1,5 @@
 import { SSTConfig } from "sst";
-import { RedshiftStack } from "./stacks/MyStack";
+import { MetricsStack } from "./stacks/MyStack";
 
 export default {
   config(_input) {
@@ -9,6 +9,6 @@ export default {
     };
   },
   stacks(app) {
-    app.stack(RedshiftStack);
+    app.stack(MetricsStack);
   },
 } satisfies SSTConfig;

@@ -1,68 +1,55 @@
-import {
-  DescribeStatementCommand,
-  ExecuteStatementCommand,
-  GetStatementResultCommand,
-  RedshiftDataClient,
-} from "@aws-sdk/client-redshift-data";
+import { Client } from "pg";
+import { retrieveSecret } from "../utils/secretManager";
 
-export const redShiftSecretArn = process.env.REDSHIFT_SECRET_ARN!;
+export const metricsSecretArn = process.env.METRICS_SECRET_ARN;
 
-export const redShiftClient = new RedshiftDataClient({
-  region: "us-east-1",
-});
+let client: Client | null = null;
+
+async function getClient() {
+  if (!metricsSecretArn) {
+    throw new Error("METRICS_SECRET_ARN is not defined");
+  }
+
+  if (!client) {
+    const secret = await retrieveSecret(metricsSecretArn, [
+      "password",
+      "port",
+      "host",
+      "username",
+      "dbname",
+    ]);
+
+    const connectionString = `postgresql://${secret.username}:${secret.password}@${secret.host}:${secret.port}/${secret.dbname}?sslmode=no-verify`;
+
+    client = new Client({
+      ssl: true,
+      connectionString: connectionString,
+    });
+
+    await client.connect();
+  }
+
+  return client;
+}
 
 export async function executeStatement(query: string) {
-  const res = await redShiftClient.send(
-    new ExecuteStatementCommand({
-      Database: "dev",
-      SecretArn: redShiftSecretArn,
-      Sql: query,
-      WorkgroupName: "default-workgroup",
-    })
-  );
+  const client = await getClient();
 
-  let hasResultSet = false;
+  const res = await client.query(query);
 
-  while (true) {
-    const statementDesc = await redShiftClient.send(
-      new DescribeStatementCommand({
-        Id: res.Id!,
-      })
-    );
+  if (!res.rows) return null;
 
-    if (
-      statementDesc.Status &&
-      ["FINISHED", "ABORTED", "FAILED"].includes(statementDesc.Status)
-    ) {
-      console.log(
-        "Statement duration in milliseconds:",
-        statementDesc.Duration! / 1000 / 1000
-      );
-      hasResultSet = statementDesc.HasResultSet!;
-      break;
-    }
-  }
-
-  if (hasResultSet) {
-    const resultSet = await redShiftClient.send(
-      new GetStatementResultCommand({
-        Id: res.Id!,
-      })
-    );
-
-    return resultSet.Records;
-  }
-
-  return null;
+  return res.rows;
 }
 
 export function formatDateToTimestamp(date: Date) {
-  const year = date.getFullYear();
-  const day = date.getDate();
-  const month = date.getMonth() + 1;
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const seconds = date.getSeconds();
+  const year = date.getUTCFullYear();
+  const day = date.getUTCDate();
+  const month = date.getUTCMonth() + 1;
+  const hours = date.getUTCHours();
+  const minutes = date.getUTCMinutes();
+  const seconds = date.getUTCSeconds();
+  const milliseconds = date.getUTCMilliseconds();
 
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
 }

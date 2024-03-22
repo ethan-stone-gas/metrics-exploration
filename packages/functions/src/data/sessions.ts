@@ -1,15 +1,12 @@
-import {} from "@aws-sdk/client-redshift-data";
 import { executeStatement } from "./db";
 
-export async function insertManyRedshiftSessions(
-  redshiftSessions: RedshiftSession[]
-) {
-  const query = buildInsertManySessionStatement(redshiftSessions);
+export async function insertManySessions(sessions: Session[]) {
+  const query = buildInsertManySessionStatement(sessions);
 
   await executeStatement(query);
 }
 
-function buildInsertManySessionStatement(sessions: RedshiftSession[]) {
+function buildInsertManySessionStatement(sessions: Session[]) {
   const rows = sessions
     .map((session) => {
       return `(
@@ -25,6 +22,7 @@ function buildInsertManySessionStatement(sessions: RedshiftSession[]) {
     ${session.idlecost},
     ${session.flatcost},
     ${session.energyusage},
+    ${session.idletime},
     ${session.meterstart},
     ${session.meterstop},
     '${session.starttime}',
@@ -36,7 +34,7 @@ function buildInsertManySessionStatement(sessions: RedshiftSession[]) {
   return `insert into sessions values ${rows}`;
 }
 
-export type RedshiftSession = {
+export type Session = {
   sessionid: string;
   networkid: string;
   connectorid: number;
@@ -49,6 +47,7 @@ export type RedshiftSession = {
   idlecost: number;
   flatcost: number;
   energyusage: number;
+  idletime: number;
   meterstart: number;
   meterstop: number;
   starttime: string;
